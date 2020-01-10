@@ -13,7 +13,7 @@ This script is to setup Kubernetes Cluster on RHEL based operating systems using
  /K8sHardWay/roles/Generating_Kubeconfigs/tasks/generate_kubeconfig.yml
  /K8sHardWay/roles/Generating_Kubeconfigs/tasks/distribute_config.yml
 4. Run this before running ansible to support Password less SSH setup.
-sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/g' /etc/ssh/sshd_config; echo "abcd1234" | passwd --stdin root; systemctl restart sshd; systemctl status sshd;
+sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/g' /etc/ssh/sshd_config; echo "xxxxxxx" | passwd --stdin root; systemctl restart sshd; systemctl status sshd
 5. Information and supported links are provided in their respective role playbook files.
 6. Ansible should be installed on the localhost where you are executing this playbook.
 7. cd into K8sHardWay and run "ansible-playbook k8s_site.yml -i hosts" as root from your local machine.
