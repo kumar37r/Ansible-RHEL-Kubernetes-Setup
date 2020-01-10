@@ -1,0 +1,108 @@
+---
+# This task file is for generating client Certificates
+# In order to generate the certificates needed by Kubernetes, you must first provision a certificate authority.
+
+  - name:  Create directory |{{ CERT_DIR }}| to store Certificates
+    file:
+      path: "{{ CERT_DIR }}"
+      state: directory
+      
+  - name: Copy CA configuration file
+    copy: 
+      src: ca-config.json 
+      dest: "{{ CERT_DIR }}" 
+      mode: 0755
+
+  - name: Copy CA certificate signing request 
+    copy: 
+      src: ca-csr.json 
+      dest: "{{ CERT_DIR }}"
+      mode: 0755
+
+  - name: Generate a CA certificate and private key 
+    command: bash -c 'cfssl gencert -initca ca-csr.json | cfssljson -bare ca '
+    args:
+      chdir:  "{{ CERT_DIR }}"
+#      creates:  "{{ CERT_DIR }}/ca-key.pem"
+
+# Now that you have provisioned a certificate authority for the Kubernetes cluster, you are ready to begin generating certificates.
+# The first set of certificates you will need to generate consists of the client certificates used by various Kubernetes components.
+#
+# Generating the following client certificates: admin
+  - name: Copy the admin client certificate signing request 
+    copy: 
+      src: admin-csr.json 
+      dest: "{{ CERT_DIR }}"
+      mode: 0755
+
+  - name: Generate the admin client certificate and private key 
+    command: bash -c 'cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes admin-csr.json | cfssljson -bare admin'
+    args:
+      chdir:  "{{ CERT_DIR }}"
+#      creates:  "{{ CERT_DIR }}/admin-key.pem" 
+
+# Generating the following client certificates: kubelet (one for each worker node)
+  - name: Deploy kubelet JSON
+    template:
+      src: "kubelet-template.j2"
+      dest: "{{ CERT_DIR }}/{{ item }}-csr.json"
+      mode: 0640
+    with_items: 
+      - "{{ groups['k8s_worker'] }}"
+
+  # - set_fact:
+  #     Host&IP1: "{{ groups['k8s_worker_ip'][0] }},{{ groups['k8s_worker'][0] }}"
+  #     Host&IP2: "{{ groups['k8s_worker_ip'][1] }},{{ groups['k8s_worker'][1] }}"
+
+
+  - name: Generate the  kubelet client certificate and private key for Worker-1
+    command: bash -c 'cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname={{ k8s_worker1_ip }},{{ k8s_worker1 }} -profile=kubernetes {{ k8s_worker1 }}-csr.json | cfssljson -bare {{ k8s_worker1 }}'
+    args:
+      chdir:  "{{ CERT_DIR }}"
+#      creates: " {{ CERT_DIR }}/{{ item }}-key.pem"
+
+  - name: Generate the  kubelet client certificate and private key for Worker-2
+    command: bash -c 'cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname={{ k8s_worker2_ip }},{{ k8s_worker2 }} -profile=kubernetes {{ k8s_worker2 }}-csr.json | cfssljson -bare {{ k8s_worker2 }}'
+    args:
+      chdir:  "{{ CERT_DIR }}"
+#      creates: " {{ CERT_DIR }}/{{ item }}-key.pem"
+
+# Generating the following client certificates: kube-controller-manager
+  - name: Copy the kube-controller-manager certificate signing request
+    copy:
+      src: kube-controller-manager-csr.json
+      dest: "{{ CERT_DIR }}"
+      mode: 0755
+
+  - name: Generate the kube-controller-manager client certificate and private key
+    command: bash -c 'cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-controller-manager-csr.json | cfssljson -bare kube-controller-manager'
+    args:
+      chdir:  "{{ CERT_DIR }}"
+#      creates:  "{{ CERT_DIR }}/kube-controller-manager-key.pem"
+
+# Generating the following client certificates: kube-proxy
+  - name: Copy the kube-proxy client certificate signing request 
+    copy: 
+      src: kube-proxy-csr.json 
+      dest: "{{ CERT_DIR }}" 
+      mode: 0755
+
+  - name: Generate the kube-proxy client certificate and private key 
+    command: bash -c 'cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-proxy-csr.json | cfssljson -bare kube-proxy'
+    args:
+      chdir:  "{{ CERT_DIR }}"
+#      creates:  "{{ PKI_DIR }}/kube-proxy-key.pem"
+
+# Generating the following client certificates: kube-scheduler
+  - name: Copy the kube-scheduler client certificate signing request
+    copy:
+      src: kube-scheduler-csr.json
+      dest: "{{ CERT_DIR }}"
+      mode: 0755
+
+
+  - name: Generate the kube-scheduler client certificate and private key
+    command: bash -c 'cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=kubernetes kube-scheduler-csr.json | cfssljson -bare kube-scheduler'
+    args:
+      chdir:  "{{ CERT_DIR }}"
+#      creates:  "{{ PKI_DIR }}/kube-scheduler-key.pem"

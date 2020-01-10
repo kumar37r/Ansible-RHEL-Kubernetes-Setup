@@ -1,0 +1,21 @@
+---
+# https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+# Kube-dns is an easy-to-use solution for providing DNS service in a Kubernetes cluster. 
+
+
+  # - name:  Deploying Kube-dns to the Cluster
+  #   k8s:
+  #     state: present
+  #     apply: yes
+  #     force: yes
+  #     src: "https://storage.googleapis.com/kubernetes-the-hard-way/kube-dns.yaml"
+
+  - name: Deploying Kube-dns to the Cluster
+    shell: |
+      kubectl create -f https://storage.googleapis.com/kubernetes-the-hard-way/kube-dns.yaml
+
+  - pause:
+      prompt: "Verify that the kube-dns pod starts up correctly by 'kubectl get pods -l k8s-app=kube-dns -n kube-system'"
+  
+
+  

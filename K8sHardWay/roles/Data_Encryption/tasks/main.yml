@@ -1,0 +1,29 @@
+---
+# One important security practice is to ensure that sensitive data is never stored in plain text. 
+# Kubernetes offers the ability to encrypt sensitive data when it is stored. 
+# However, in order to use this feature it is necessary to provide Kubernetes with a data encrpytion config containing an encryption key. 
+# https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/
+
+  - name: Create the TLS Encryption Token
+    command: bash -c "head -c 32 /dev/urandom | base64 "
+    register: command_output
+
+  - set_fact:
+      encryption_token: "{{ command_output.stdout }}"
+
+  - name: Copying encryption key Token file
+    template:
+      src: encryption-config.yaml
+      dest: "{{ CONF_DIR }}"
+
+# Distribute Data encrypted keys to master nodes
+  - name: Copy Encrypted token from local to all other Master nodes
+    delegate_to: 127.0.0.1
+    run_once: true
+    become: false
+    shell: "scp -r encryption-config.yaml root@{{ item }}:~/certificates/ "
+    args:
+      chdir: "{{ CONF_DIR }}"
+    loop:
+      - "{{ groups['k8s_master'][0] }}"
+      - "{{ groups['k8s_master'][1] }}"

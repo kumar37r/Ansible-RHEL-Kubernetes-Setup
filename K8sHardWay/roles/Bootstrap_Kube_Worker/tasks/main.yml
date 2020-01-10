@@ -1,0 +1,230 @@
+---
+# https://kubernetes.io/docs/concepts/architecture/
+# https://github.com/kubernetes/community/blob/master/contributors/design-proposals/architecture/architecture.md#the-kubernetes-node
+
+# The first step is to download and install the binary file which will later used to configure our worker nodes services
+  - name: Installing dependent binaries socat, conntrack and ipset
+    yum:
+      state: present
+      name: [ socat, conntrack, ipset]
+  
+  - name: Creates necessory directories for binaries, kube, kube-proxy, docker
+    file: path={{ item }} state=directory
+    with_items:
+          - /etc/cni/net.d
+          - /opt/cni/bin
+          - /var/lib/kubelet
+          - /var/lib/kube-proxy
+          - /var/lib/kubernetes
+          - /var/run/kubernetes
+          - /etc/docker
+  
+  - name: Download and Install crictl binary
+    unarchive:
+      src:  https://github.com/kubernetes-incubator/cri-tools/releases/download/v1.0.0-beta.0/crictl-v1.0.0-beta.0-linux-amd64.tar.gz
+      dest: /usr/local/bin/
+      remote_src: yes
+      mode: 0755
+      validate_certs: no
+
+  - name: Download and Install runsc binary
+    get_url:
+      url: https://storage.googleapis.com/kubernetes-the-hard-way/runsc
+      dest: /usr/local/bin/runsc
+      validate_certs: no
+      mode: 0755
+
+  - name: Download and Install runc.amd64 binary
+    get_url:
+      url: https://github.com/opencontainers/runc/releases/download/v1.0.0-rc5/runc.amd64
+      dest: /usr/local/bin/runc
+      validate_certs: no
+      mode: 0755
+
+  - name: Download and Install cni plugin
+    unarchive:
+      src:  https://github.com/containernetworking/plugins/releases/download/v0.6.0/cni-plugins-amd64-v0.6.0.tgz
+      dest: /opt/cni/bin/
+      remote_src: yes
+      mode: 0755
+      validate_certs: no
+
+  # - name: Download and Install Containerd
+  #   unarchive:
+  #     src:  https://github.com/containerd/containerd/releases/download/v1.1.0/containerd-1.1.0.linux-amd64.tar.gz
+  #     dest: /
+  #     remote_src: yes
+  #     mode: 755
+  #     validate_certs: no
+  # - name: Download and Install Docker
+  #   unarchive:
+  #     src:  https://get.docker.com/builds/Linux/x86_64/docker-1.11.2.tgz
+  #     dest: /usr/bin/
+  #     remote_src: yes
+  #     mode: 0755
+  #     validate_certs: no
+
+
+  - name: Install yum utils, device-mapper-persistent-data, lvm2 for docker
+    yum:
+      name: [yum-utils, device-mapper-persistent-data, lvm2]
+      state: latest
+
+  - name: Add Docker repo
+    get_url:
+      url: https://download.docker.com/linux/centos/docker-ce.repo
+      dest: /etc/yum.repos.d/docer-ce.repo
+
+  - name: Enable Docker Edge repo
+    ini_file:
+      dest: /etc/yum.repos.d/docer-ce.repo
+      section: 'docker-ce-edge'
+      option: enabled
+      value: 0
+
+  - name: Enable Docker Test repo
+    ini_file:
+      dest: /etc/yum.repos.d/docer-ce.repo
+      section: 'docker-ce-test'
+      option: enabled
+      value: 0
+
+  - name: Install Docker
+    package:
+      name: [docker-ce, docker-ce-cli, containerd.io]
+      state: latest
+  
+  # - name: Download and Install kubectl, kube-proxy and kubelet 
+  #   get_url:
+  #     url: "{{ item }}"
+  #     dest: /usr/local/bin/
+  #     validate_certs: no
+  #     mode: 755
+  #   with_items:
+  #     - https://storage.googleapis.com/kubernetes-release/release/{{ k8s_version }}/bin/linux/amd64/kubectl
+  #     - https://storage.googleapis.com/kubernetes-release/release/{{ k8s_version }}/bin/linux/amd64/kube-proxy
+  #     - https://storage.googleapis.com/kubernetes-release/release/{{ k8s_version }}/bin/linux/amd64/kubelet
+
+  - name: Download and Install kubectl
+    get_url:
+      url: "https://storage.googleapis.com/kubernetes-release/release/{{ k8s_version }}/bin/linux/amd64/kubectl"
+      dest: "/usr/local/bin/kubectl"
+      validate_certs: no
+      mode: 0755
+
+
+  - name: Download and Install kube-proxy 
+    get_url:
+      url: "https://storage.googleapis.com/kubernetes-release/release/{{ k8s_version }}/bin/linux/amd64/kube-proxy"
+      dest: "/usr/local/bin/kube-proxy"
+      validate_certs: no
+      mode: 0755
+
+  - name: Download and Install kubelet 
+    get_url:
+      url: "https://storage.googleapis.com/kubernetes-release/release/{{ k8s_version }}/bin/linux/amd64/kubelet"
+      dest: "/usr/local/bin/kubelet"
+      validate_certs: no
+      mode: 0755
+  
+# Configuring Containerd
+  # - name: Create the containerd config.tom
+  #   template:
+  #     src: config.toml
+  #     dest: /etc/containerd/
+
+  # - name: Create the containerd service unit file
+  #   template:
+  #     src: containerd.service
+  #     dest: /etc/systemd/system/
+
+  # - name: Create Docker service unit file
+  #   template:
+  #     src: docker.service
+  #     dest: /etc/systemd/system/
+  #     mode: 0755
+
+# Configuring Kubelet
+# Kubelet is the Kubernetes agent which runs on each worker node. 
+# Acting as a middleman between the Kubernetes control plane and the underlying container runtime.
+# It coordinates the running of containers on the worker node.
+  - name: Copy node cert files to /var/lib/kubelet
+    command: bash -c 'cp {{ ansible_fqdn }}-key.pem {{ ansible_fqdn }}.pem /var/lib/kubelet/'
+    args:
+      chdir: ~/certificates/
+
+  - name: Copy kubeconfig files to /var/lib/kubelet
+    command: bash -c 'cp {{ ansible_fqdn }}.kubeconfig /var/lib/kubelet/kubeconfig'
+    args:
+      chdir: ~/certificates/
+
+  - name: Copy CA cert files to /var/lib/kubelet
+    command: bash -c 'cp ca.pem /var/lib/kubernetes/'
+    args:
+      chdir: ~/certificates/
+
+  - name: Create the kubelet config file
+    template:
+      src: kubelet-config.yaml
+      dest: /var/lib/kubelet/
+
+  - name: Create the kubelet config file
+    template:
+      src: kubelet.service
+      dest: /etc/systemd/system/
+      mode: 0755
+
+# Configuring Kube-Proxy
+  - name:  Copy Kube Proxy file to /var/lib/kube-proxy/kubeconfig
+    command: bash -c 'cp kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig'
+    args:
+      chdir: ~/certificates/
+
+  - name: Create the kubelet config file
+    template:
+      src: kube-proxy-config.yaml
+      dest: /var/lib/kube-proxy/
+
+  - name: Create kube-proxy service unit config file
+    template:
+      src: kube-proxy.service
+      dest: /etc/systemd/system/
+      mode: 0755
+
+  - name: Disable Swap for worker nodes
+    shell: swapoff -a
+
+  - name: updating /etc/fstab to disable swap permanently
+    replace:
+      path: /etc/fstab
+      regexp: '/root/swap'
+      replace: '#/root/swap'
+
+  - name: Start docker, kubelet, kube-proxy Service
+    systemd:
+      state: started
+      daemon_reload: yes
+      enabled: yes
+      name: "{{ item }}"
+    with_items:
+      - docker 
+      - kubelet 
+      - kube-proxy
+
+  - name: Enable IP forwarding for worker nodes
+    sysctl:
+        name: net.ipv4.conf.all.forwarding
+        reload: yes 
+        state: present 
+        sysctl_set: yes 
+        sysctl_file: /etc/sysctl.conf
+        value: 1 
+
+  - pause:
+      prompt: " Run 'kubectl get nodes' on any master node and Press returm"
+
+
+
+
+
+

@@ -1,0 +1,25 @@
+---
+# All of the necessary certificates that have been generated need to be moved onto the appropriate servers
+  - name: Copy Kubeconfigs from local to all other Worker nodes
+    delegate_to: 127.0.0.1
+    run_once: true
+    become: false
+    shell: "scp -r {{ item }}.kubeconfig kube-proxy.kubeconfig root@{{ item }}:~/certificates/ "
+    args:
+      chdir: "{{ CONF_DIR }}"
+    loop:
+      - "{{ groups['k8s_worker'][0] }}"
+      - "{{ groups['k8s_worker'][1] }}"
+
+
+  - name: Copy Kubeconfigs from local to all other Master nodes
+    delegate_to: 127.0.0.1
+    run_once: true
+    become: false
+    shell: "scp -r admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig root@{{ item }}:~/certificates/ "
+    args:
+      chdir: "{{ CONF_DIR }}"
+    loop:
+      - "{{ groups['k8s_master'][0] }}"
+      - "{{ groups['k8s_master'][1] }}"
+

@@ -1,0 +1,6 @@
+---
+# This task file is for Generating and Distributing Kubeconfig Certificates
+# https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/
+
+- include: generate_kubeconfig.yml
+- include: distribute_config.yml

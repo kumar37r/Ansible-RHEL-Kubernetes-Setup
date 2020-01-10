@@ -1,0 +1,91 @@
+---
+# https://github.com/kumar37r/kubernetes-the-hard-way
+# This is the main site YAML to setup K8s environemnt Hard Way.
+
+  - name: Setup password less SSH
+    hosts: localhost
+    connection: local
+    roles:
+      - role: Passwordless-SSH
+        tags: Passwordless-SSH
+
+  - name: Configure Pre-Requisites 
+    hosts: all_nodes
+    gather_facts: yes
+    roles:
+      - role: Pre-Req
+        tags: Pre-Req
+
+  - name: Install Client Tools
+    hosts: localhost
+    connection: local
+    roles:
+      - role: Install_Client_Tools
+        tags: Install_Client_Tools
+
+  - name: Provisioning CA and Generating TLS Certificates
+    hosts: localhost
+    connection: local
+    roles:
+      - role: Provision_Generate_Certs
+        tags: Provision_Generate_Certs
+
+  - name: Generating Kubernetes Configuration Files for Automation
+    hosts: localhost
+    connection: local
+    roles:
+      - role: Generating_Kubeconfigs
+        tags: Generating_Kubeconfigs
+
+  - name: Generating Data Encryption Config and Key
+    hosts: localhost
+    connection: local
+    roles:
+      - role: Data_Encryption
+        tags: Data_Encryption
+
+  - name: Bootstraping the etcd cluster
+    hosts: k8s_master
+    roles:
+      - role: Bootstrap_etcd_Cluster
+        tags: Bootstrap_etcd_Cluster
+
+  - name: Bootstraping the Kubernetes Control Pane
+    hosts: k8s_master
+    roles:
+      - role: Bootstrap_Kube_Control
+        tags: Bootstrap_Kube_Control
+
+  - name: Setting up a Kube API Frontend Load Balancer
+    hosts: k8s_loadbalancer
+    roles:
+      - role: Kube_API_Frontend_LoadBalancer
+        tags: Kube_API_Frontend_LoadBalancer
+
+  - name: Bootstrapping the Kubernetes Worker Nodes
+    hosts: k8s_worker
+    roles:
+      - role: Bootstrap_Kube_Worker
+        tags: Bootstrap_Kube_Worker
+
+  - name: Configuring Kubectl for Remote Access
+    hosts: localhost
+    connection: local
+    roles:
+      - role: Kubectl_Remote_Access
+        tags: Kubectl_Remote_Access
+
+  - name: Deploying the DNS Cluster Add-on
+    hosts: localhost
+    connection: local
+    roles:
+      - role: Deploying_DNS
+        tags: Deploying_DNS
+        
+  - name: Networking
+    hosts: localhost
+    connection: local
+    roles:
+      - role: Networking
+        tags: Networking
+

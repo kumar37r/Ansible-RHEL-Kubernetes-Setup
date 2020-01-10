@@ -1,0 +1,14 @@
+---
+# This task file is for generating kuberenets Certificates
+  - name: Copy the Kubernetes server certificate signing request 
+    copy: 
+      src: kubernetes-csr.json 
+      dest: "{{ CERT_DIR }}" 
+      mode: 0755
+    tags: cf
+
+  - name: Generate the Kubernetes certificate and private key 
+    shell: bash -c 'cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -hostname={{ APISERVER_SERVICE_IP }},{{ k8s_master1 }},{{ k8s_master1_ip }},{{ k8s_master2 }},{{ k8s_master2_ip }},{{ k8s_loadbalancer_ip }},{{ k8s_loadbalancer }},127.0.0.1,localhost,kubernetes.default -profile=kubernetes kubernetes-csr.json | cfssljson -bare kubernetes'
+    args:
+      chdir:  "{{ CERT_DIR }}"
+#      creates:  "{{ CERT_DIR }}/kubernetes-key.pem"

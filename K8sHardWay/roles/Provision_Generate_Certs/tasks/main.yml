@@ -1,0 +1,6 @@
+# This task file is for Provisioning CA and Generating TLS Certificates
+
+- include: client_certs.yml
+- include: k8s_api_certs.yml
+- include: service_account.yml
+- include: distribute_certs.yml

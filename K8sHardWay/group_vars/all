@@ -1,0 +1,32 @@
+ssh_key_filename: "ansible_rsa"
+remote_machine_username: "root"
+remote_machine_password: "abcd1234"
+
+k8s_version: v1.12.0
+ectd_version: v3.2.17
+docker_version: 1.11.2
+
+# Certificate directory
+CERT_DIR: '{{ playbook_dir}}/certificates'
+
+# Kubeconfig directory
+CONF_DIR: '{{ playbook_dir }}/kubeconfig'
+
+# Binaries directory
+BIN_DIR: '{{ playbook_dir }}/bin'
+
+# Internal K8s API service IP
+APISERVER_SERVICE_IP: 10.32.0.1 
+
+k8s_master1: rajkumarande12c.mylabserver.com
+k8s_master2: rajkumarande13c.mylabserver.com
+k8s_worker1: rajkumarande14c.mylabserver.com
+k8s_worker2: rajkumarande15c.mylabserver.com
+k8s_loadbalancer: rajkumarande16c.mylabserver.com
+
+
+k8s_master1_ip: 172.31.20.145
+k8s_master2_ip: 172.31.28.64
+k8s_worker1_ip: 172.31.20.242
+k8s_worker2_ip: 172.31.25.69
+k8s_loadbalancer_ip: 172.31.26.168

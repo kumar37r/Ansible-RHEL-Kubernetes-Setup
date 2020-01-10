@@ -1,0 +1,33 @@
+---
+# https://kubernetes.io/docs/reference/kubectl/overview/
+# Kubectl is a powerful command-line tool that allows you to manage Kubernetes clusters. 
+# In order to manage the cluster from your machine, you will need to configure your local kubectl to connect to the remote cluster.
+
+  - name: Installing Autossh to help SSH Tunnel
+    yum:
+      name: autossh
+      state: present
+
+  - name: Open up an ssh tunnel to port 6443 on your Kubernetes API load balance
+    shell: autossh -M 0 -f -q -N -L 6443:localhost:6443 root@{{ k8s_loadbalancer }} 
+
+
+  - name: configure your local kubectl in your main shell like so. Set KUBERNETES_PUBLIC_ADDRESS to the public IP of your load balanc
+    shell: |
+        kubectl config set-cluster kubernetes-the-hard-way \
+          --certificate-authority=ca.pem \
+          --embed-certs=true \
+          --server=https://localhost:6443
+        kubectl config set-credentials admin \
+          --client-certificate=admin.pem \
+          --client-key=admin-key.pem
+        kubectl config set-context kubernetes-the-hard-way \
+          --cluster=kubernetes-the-hard-way \
+          --user=admin
+        kubectl config use-context kubernetes-the-hard-way
+    args:
+      chdir: "{{ CERT_DIR }}"
+
+  - pause:
+      prompt: "Verify executing 'kubectl get pods' 'kubectl get nodes' 'kubectl version' and hit return"
+

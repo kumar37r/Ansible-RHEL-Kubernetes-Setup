@@ -1,0 +1,25 @@
+---
+# All of the necessary certificates that have been generated need to be moved onto the appropriate servers
+  - name: Copy certificates from local to all other Worker nodes
+    delegate_to: 127.0.0.1
+    run_once: true
+    become: false
+    shell: "scp -r ca.pem {{ item }}-key.pem {{ item }}.pem root@{{ item }}:~/certificates/ "
+    args:
+      chdir: "{{ CERT_DIR }}"
+    loop:
+      - "{{ groups['k8s_worker'][0] }}"
+      - "{{ groups['k8s_worker'][1] }}"
+
+
+  - name: Copy certificates from local to all other Master nodes
+    delegate_to: 127.0.0.1
+    run_once: true
+    become: false
+    shell: "scp -r ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem service-account-key.pem service-account.pem root@{{ item }}:~/certificates/ "
+    args:
+      chdir: "{{ CERT_DIR }}"
+    loop:
+      - "{{ groups['k8s_master'][0] }}"
+      - "{{ groups['k8s_master'][1] }}"
+

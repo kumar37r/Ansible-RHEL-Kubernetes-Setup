@@ -1,0 +1,27 @@
+---
+# https://kubernetes.io/docs/concepts/cluster-administration/networking/
+# https://github.com/weaveworks/weave
+# Kubernetes provides a powerful networking model which allows pods to communicate with one another over a virtual network, regardless of what host they are running on.
+
+  # - name: Set up python2-openshift to support kubernetes module
+  #   yum:
+  #     name: python2-openshift
+  #     state: present
+      
+  # - name: Install Weave Net
+  #   k8s:
+  #     state: present
+  #     apply: yes
+  #     force: yes
+  #     src: "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')&env.IPALLOC_RANGE=10.200.0.0/16"
+
+  - name: Install Weave Net
+    shell: |
+      kubectl apply -f "https://cloud.weave.works/k8s/net?k8s-version=$(kubectl version | base64 | tr -d '\n')&env.IPALLOC_RANGE=10.200.0.0/16"
+#        kubectl apply -f https://docs.projectcalico.org/v3.9/manifests/calico.yaml
+#        kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml  
+          
+    
+  - pause:
+      prompt: "Try running 'kubectl get pods -n kube-system', 'Kubectl get nodes'; should be able to see nodes in running status."
+  

@@ -1,0 +1,47 @@
+---
+# https://etcd.io
+# https://github.com/etcd-io/etcd
+# https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/
+# etcd is a distributed key value store that provides a reliable way to store data across a cluster of machines
+  - name: Download ETCD and Extract ETCD
+    unarchive:
+      src: https://github.com/coreos/etcd/releases/download/{{ ectd_version }}/etcd-{{ ectd_version }}-linux-amd64.tar.gz
+      dest: /tmp
+      remote_src: yes
+      mode: 755
+      validate_certs: no
+
+  - name: Move ETCD executables to /usr/local/bin
+    command: bash -c 'mv /tmp/etcd-{{ ectd_version }}-linux-amd64/etcd* /usr/local/bin'
+
+  - name: Creates /etc/etcd and /var/lib/etcd
+    file:
+      path: "{{ item }}"
+      state: directory
+    with_items:
+      - /etc/etcd
+      - /var/lib/etcd
+
+  - name: Copy .pem files to /etc/etcd
+    command: bash -c 'cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/'
+    args:
+      chdir: ~/certificates/
+
+  - name: Copying ETCD service file
+    template:
+      src: etcd.service
+      dest: /etc/systemd/system/
+  
+  - name: Starts ETCD Service
+    systemd:
+      state: started
+      daemon_reload: yes
+      enabled: yes
+      name: etcd
+      
+# Use this command to verify that etcd is working correctly. The output should list your two etcd nodes:
+# Try --endpoints=https://127.0.0.1:2379 with --endpoints=https://{{ ansible_fqdn }}:2379
+  - name: Verify etcd functionality
+    shell: ETCDCTL_API=3 etcdctl member list --endpoints=https://127.0.0.1:2379 --cacert=/etc/etcd/ca.pem --cert=/etc/etcd/kubernetes.pem --key=/etc/etcd/kubernetes-key.pem
+    register: ETCD
+  - debug: var=ETCD.stdout_lines

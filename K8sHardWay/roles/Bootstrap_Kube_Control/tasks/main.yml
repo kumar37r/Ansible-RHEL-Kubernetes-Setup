@@ -1,0 +1,188 @@
+---
+# https://kubernetes.io/docs/concepts/overview/components/#master-components
+# The Kubernetes Cntrol Pane is a set of services that controls the K8s cluster
+# The first step in bootstrapping a new Kubernetes control plane is to install the necessary binaries on the controller servers.
+
+# Installing Kubernetes Control Plane Binaries
+  - name: Creates config directory /etc/kubernetes/config 
+    file:
+      path: /etc/kubernetes/config
+      state: directory
+
+  - name: Download and Install kube-apiserver 
+    get_url:
+      url: " https://storage.googleapis.com/kubernetes-release/release/{{ k8s_version }}/bin/linux/amd64/kube-apiserver "
+      dest: "/usr/local/bin/kube-apiserver"
+      mode: 0755
+      validate_certs: no
+
+  - name: Download and Install kube-controller-manager
+    get_url:
+      url: " https://storage.googleapis.com/kubernetes-release/release/{{ k8s_version }}/bin/linux/amd64/kube-controller-manager "
+      dest: "/usr/local/bin/kube-controller-manager"
+      mode: 0755
+      validate_certs: no
+
+  - name: Download and Install kube-scheduler
+    get_url:
+      url: " https://storage.googleapis.com/kubernetes-release/release/{{ k8s_version  }}/bin/linux/amd64/kube-scheduler "
+      dest: "/usr/local/bin/kube-scheduler"
+      mode: 0755
+      validate_certs: no
+
+  - name: Download and Install kubectl
+    get_url:
+      url: " https://storage.googleapis.com/kubernetes-release/release/{{ k8s_version  }}/bin/linux/amd64/kubectl "
+      dest: "/usr/local/bin/kubectl"
+      mode: 0755
+      validate_certs: no
+
+# Setting up the Kubernetes API Server
+  - name: Creates config directory /var/lib/kubernetes
+    file:
+      path: /var/lib/kubernetes
+      state: directory
+
+  - name: Copy .pem files to /var/lib/kubernetes/
+    command: bash -c 'cp ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem service-account-key.pem service-account.pem encryption-config.yaml /var/lib/kubernetes/'
+    args:
+      chdir: ~/certificates/
+
+  - name: Copying kube-apiserver.service
+    template:
+      src: kube-apiserver.service
+      dest: /etc/systemd/system/
+  
+# Setting up the Kubernetes Controller Manager
+  - name: Copy .kubeconfig files to /var/lib/kubernetes/
+    command: bash -c 'cp kube-controller-manager.kubeconfig kube-scheduler.kubeconfig /var/lib/kubernetes'
+    args:
+      chdir: ~/certificates/
+
+  - name: Copying kube-controller-manager.service
+    template:
+      src: kube-controller-manager.service
+      dest: /etc/systemd/system/
+
+# Setting up the Kubernetes Scheduler
+  # - name: Copy .kubeconfig files to /var/lib/kubernetes/
+  #   command: bash -c 'cp kube-scheduler.kubeconfig /var/lib/kubernetes'
+  #   args:
+  #     chdir: ~/certificates/
+
+  - name: Copying kube-scheduler.yaml
+    template:
+      src: kube-scheduler.yaml
+      dest: /etc/kubernetes/config/
+
+  - name: Copying kube-scheduler.service
+    template:
+      src: kube-scheduler.service
+      dest: /etc/systemd/system/
+
+  - name: Starts Kube Scheduler  Service
+    systemd:
+      state: started
+      daemon_reload: yes
+      enabled: yes
+      name: "{{ item }}"
+    with_items:
+      - kube-apiserver 
+      - kube-controller-manager 
+      - kube-scheduler  
+
+# Use kubectl to check componentstatuses:
+  - name: Verify kubectl component status
+    shell: kubectl get componentstatuses --kubeconfig admin.kubeconfig
+    args:
+      chdir: ~/certificates/
+    register: KUBECTL
+  - debug: var=KUBECTL.stdout_lines
+
+# Enable HTTP Health Checks
+  - name: Set up a basic nginx proxy for the healthz endpoint by first installing nginx
+    yum:
+      name: nginx
+      state: present
+
+  - name: Create an nginx configuration for the health check proxy
+    template:
+      src: kubernetes.default.svc.cluster.local
+      dest: /etc/nginx/sites-available/
+
+  - name: Creates ngnix configuration directory /etc/nginx/sites-enabled/
+    file:
+      path: /etc/nginx/sites-enabled/
+      state: directory 
+
+  - name: Create a symbolic link
+    file:
+      src: /etc/nginx/sites-available/kubernetes.default.svc.cluster.local
+      dest: /etc/nginx/sites-enabled/kubernetes.default.svc.cluster.local
+      owner: root
+      group: root
+      mode: 0755
+      state: link
+
+  - name: Starts nginx Service
+    systemd:
+      state: started
+      daemon_reload: yes
+      enabled: yes
+      name: nginx
+
+# verify that everything is working like so.
+  - name: Verify nginx functionality
+    shell: 'curl -H "Host: kubernetes.default.svc.cluster.local" -i http://127.0.0.1/healthz'
+    register: NGINX
+  - debug: var=NGINX.stdout_lines
+
+# One of the necessary steps in setting up a new Kubernetes cluster from scratch is to assign permissions that allow the Kubernetes API to access various functionality within the worker kubelets. 
+  - name: Set up python2-openshift to support kubernetes module
+    yum:
+      name: python2-openshift
+      state: present
+
+  - name: RBAC role creation
+    block:  
+      - name: Create RBAC role for kubelet authorization with necessory permissions
+        k8s:
+          state: present
+          apply: yes
+          force: yes
+          kubeconfig:  ~/certificates/admin.kubeconfig
+          definition: "{{ lookup('template', 'create-kube-role.yaml')|from_yaml }}"
+    rescue:
+      - name: This ran because of failure in Create RBAC role for kubelet authorization with necessory permissions
+        k8s:
+          state: present
+          apply: yes
+          force: yes
+          kubeconfig: ~/certificates/admin.kubeconfig
+          definition: "{{ lookup('template', 'create-kube-role.yaml')|from_yaml }}"
+
+
+# If there are any error while RBAC Binding execute "Create RBAC" manually by Copying template to remote host and run "kubectl apply --kubeconfig=/admin.kubeconfig -f /create-kube-role.yaml" 
+  - name: Bind RBAC role to kubelet user
+    block:
+      - name: Bind RBAC role to kubelet user
+        k8s:
+          state: present
+          apply: yes
+          force: yes
+          kubeconfig:  ~/certificates/admin.kubeconfig
+          definition: "{{ lookup('template', 'bind-kube-role.yaml')|from_yaml }}"
+    rescue:
+      - name: This ran because of failure in Bind RBAC role to kubelet user
+        k8s:
+          state: present
+          apply: yes
+          force: yes
+          kubeconfig:  ~/certificates/admin.kubeconfig
+          definition: "{{ lookup('template', 'bind-kube-role.yaml')|from_yaml }}"
+      
+
+    
+    
+
+  

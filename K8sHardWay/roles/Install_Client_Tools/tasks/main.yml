@@ -1,0 +1,33 @@
+---
+# tasks file for Client tools
+
+- name: Download CFSSL tool
+  get_url:
+    url: https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+    validate_certs: no
+    dest: /usr/local/bin/cfssl
+    mode: 755
+
+- name: Download CFSSL JSON tool
+  get_url:
+    url: https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64 
+    validate_certs: no
+    dest: /usr/local/bin/cfssljson
+    mode: 755
+
+- name: Download and Install kubectl
+  get_url:
+    url: "https://storage.googleapis.com/kubernetes-release/release/{{k8s_version}}/bin/linux/amd64/kubectl"
+    validate_certs: no
+    dest: /usr/local/bin/kubectl
+    mode: 755
+
+- name: Verify Kubectl version
+  shell: "kubectl version --client"
+  register: KUBECTL
+- debug: var=KUBECTL.stdout_lines
+
+- name: Verify cfssl version
+  shell: "cfssl version"
+  register: CFSSL
+- debug: var=CFSSL.stdout_lines

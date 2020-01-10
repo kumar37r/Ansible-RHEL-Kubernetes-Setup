@@ -1,0 +1,44 @@
+---
+
+  - name: Update /etc/hosts on all nodes
+    lineinfile:
+      path: "/etc/hosts"
+      regexp: "{{ hostvars[item]['ansible_env'].SSH_CONNECTION.split(' ')[2] }}\t{{ hostvars[item]['ansible_fqdn']}}\t{{ hostvars[item]['ansible_hostname']}}"
+      line: "{{ hostvars[item]['ansible_env'].SSH_CONNECTION.split(' ')[2] }}\t{{ hostvars[item]['ansible_fqdn']}}\t{{ hostvars[item]['ansible_hostname']}}"
+      state: present
+      backup: yes
+    when: ansible_fqdn != "{{ item }}" or ansible_fqdn  == "{{ item }}"
+    with_items: 
+      - "{{ groups['all_nodes'] }}"
+
+  # - name: Copy over /etc/ssh to all nodes
+  #   synchronize:
+  #       src: /etc/hosts
+  #       dest: /etc/hosts
+  #       # perms: 0600
+  #       mode: push # choices: pull;push. Specify the direction of the synchronization. In push mode the localhost or delegate is the source; In pull mode the remote host in context is the source.
+  #   delegate_to: localhost   # Files will be copied from this server to the inventory server.
+  
+  - name: Stop and diabale firewalld on all nodes
+    service:
+      name: firewalld
+      state: stopped
+      enabled: no
+    ignore_errors: yes
+    
+  - name: Disable SELINUX on all nodes
+    selinux:
+        state: disabled # required. choices: enforcing;permissive;disabled. The SELinux mode
+        policy: targeted # not required. name of the SELinux policy to use (example: C(targeted)) will be required if state is not C(disabled)
+        conf: /etc/selinux/config # not required. path to the SELinux configuration file, if non-standard
+  
+  - name: Ensure SELinux is set to disabled mode
+    lineinfile:
+      path: /etc/selinux/config
+      regexp: '^SELINUX='
+      line: SELINUX=disabled
+
+  - name: Create directory to store all certificates
+    file: 
+      path: ~/certificates
+      state: directory

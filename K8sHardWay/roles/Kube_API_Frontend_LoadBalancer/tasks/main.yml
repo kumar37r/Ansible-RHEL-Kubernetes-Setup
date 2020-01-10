@@ -1,0 +1,58 @@
+---
+# In order to achieve redundancy for your Kubernetes cluster, you will need to load balance usage of the Kubernetes API across multiple control nodes.
+# Setting host in permissive mode to enable proxy
+  - name: Put SELinux in permissive mode, to enable Proxy.
+    selinux:
+      policy: targeted
+      state: permissive
+
+#Balancer server:
+  - name: Installing nginx to load balance Kubernetes API
+    yum:
+      name: nginx
+      state: present
+
+  - name: Starts and enable nginx Service
+    systemd:
+      state: started
+      daemon_reload: yes
+      enabled: yes
+      name: nginx
+# This folder to store configuration files related to TCP streams
+  - name: Creates directory /etc/nginx/tcpconf.d
+    file:
+      path: /etc/nginx/tcpconf.d
+      state: directory
+
+  - name: Add tcpconf.d to the end of nginx.conf
+    blockinfile:
+      path: /etc/nginx/nginx.conf
+      block: | 
+          include /etc/nginx/tcpconf.d/*;
+
+
+  - name: Create the load balancer nginx config file
+    copy:
+      dest: /etc/nginx/tcpconf.d/kubernetes.conf
+      content: |
+          stream {
+              upstream kubernetes {
+                  server {{ groups['k8s_master'][0] }}:6443;
+                  server {{ groups['k8s_master'][1] }}:6443;
+              }
+
+              server {
+                  listen 6443;
+                  listen 443;
+                  proxy_pass kubernetes;
+              }
+          }
+
+  - name: Reload the nginx configuration
+    shell: 'nginx -s reload' 
+
+  - name: Verify that the load balancer is working like so
+    shell: 'curl -k https://localhost:6443/version'
+    register: LOAD
+  - debug: var=LOAD.stdout_lines 
+          
