@@ -1,7 +1,5 @@
 # Bulding Kubernete Cluster 
 
-This script is to setup Kubernetes Cluster on RHEL based operating systems using Ansible
-
 1. Before running this script update hosts and group_vars/all files with your hostnames and IP addresses.
 2. This script is suitable with 2 Controller nodes, 2 Worker nodes and 1 Load balancer node.
 3. If you have more than these servers, you'll have to modify below configuration files
