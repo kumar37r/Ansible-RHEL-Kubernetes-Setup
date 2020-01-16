@@ -1,4 +1,4 @@
-# Bulding Kubernete Cluster 
+## Bulding Kubernete Cluster 
 
 1. Before running this script update hosts and group_vars/all files with your hostnames and IP addresses.
 2. This script is suitable with 2 Controller nodes, 2 Worker nodes and 1 Load balancer node.
@@ -16,5 +16,5 @@ sed -i 's/#PermitRootLogin yes/PermitRootLogin yes/g' /etc/ssh/sshd_config; echo
 6. Ansible should be installed on the localhost where you are executing this playbook.
 7. cd into K8sHardWay and run "ansible-playbook k8s_site.yml -i hosts" as root from your local machine.
 
-Citations:
+## Referenced From:
 1. https://github.com/kelseyhightower/kubernetes-the-hard-way
